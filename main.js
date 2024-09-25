@@ -159,7 +159,26 @@ function update(bearerQuery, randomUserAgent, upgradeId) {
     }
   );
 }
-
+function boosters(bearerQuery, randomUserAgent) {
+  return axios.post(
+    "https://ranch-api.kuroro.com/api/CoinsShop/BuyItem",
+    { itemId: "raffle-ticket" },
+    {
+      headers: {
+        accept: "application/json, text/plain, */*",
+        "accept-language": "en-US,en;q=0.9",
+        authorization: `Bearer ${bearerQuery}`,
+        priority: "u=1, i",
+        "User-Agent": randomUserAgent,
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-site",
+        Referer: "https://ranch.kuroro.com/",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+      },
+    }
+  );
+}
 function saveCoordinates(bearerQuery, coordinates, randomUserAgent) {
   return axios.post("https://ranch-api.kuroro.com/api/Bf/Save", coordinates, {
     headers: {
@@ -253,7 +272,6 @@ const main = async () => {
         while (energy > 0 || shards > 0) {
           await delay(150);
 
-          // Refresh user info
           userInfo = await getUser(bearerQuery, randomUserAgent);
           energy = userInfo.energySnapshot.value;
           shards = userInfo.shards;
@@ -275,47 +293,53 @@ const main = async () => {
         }
 
         console.log("Proses selesai: Energy dan Shards keduanya 0.");
+        try {
+          await boosters(bearerQueries, randomUserAgent);
+        } catch (e) {
+          console.log("terjadi kesalahan pada pembelian tiket", e);
+        }
 
-        // try {
-        //   const updatedUserInfo = await getUser(bearerQuery, randomUserAgent);
-        //   const totalCoins = Math.round(updatedUserInfo.coinsSnapshot.value);
-        //   console.log("Total cost :", totalCoins);
+        try {
+          console.log("try Upgrades");
+          const updatedUserInfo = await getUser(bearerQuery, randomUserAgent);
+          const totalCoins = Math.round(updatedUserInfo.coinsSnapshot.value);
+          console.log("Total cost :", totalCoins);
 
-        //   const upgradeSkill = await purposeUpgrade(
-        //     bearerQuery,
-        //     randomUserAgent
-        //   );
-        //   const tolerance = totalCoins * 0.1;
-        //   const matchingItems = [];
+          const upgradeSkill = await purposeUpgrade(
+            bearerQuery,
+            randomUserAgent
+          );
+          const tolerance = totalCoins * 0.1;
+          const matchingItems = [];
 
-        //   upgradeSkill.forEach((item) => {
-        //     if (item.canBePurchased) {
-        //       const priceDifference = Math.abs(item.cost - totalCoins);
-        //       if (priceDifference <= tolerance) {
-        //         matchingItems.push(item);
-        //       }
-        //     }
-        //   });
+          upgradeSkill.forEach((item) => {
+            if (item.canBePurchased) {
+              const priceDifference = Math.abs(item.cost - totalCoins);
+              if (priceDifference <= tolerance) {
+                matchingItems.push(item);
+              }
+            }
+          });
 
-        //   if (matchingItems.length > 0) {
-        //     const firstMatchingItem = matchingItems[0];
-        //     console.log(
-        //       `First Matching Item: Name: ${firstMatchingItem.name}, Cost: ${firstMatchingItem.cost}, upgradeId: ${firstMatchingItem.upgradeId}`
-        //     );
+          if (matchingItems.length > 0) {
+            const firstMatchingItem = matchingItems[0];
+            console.log(
+              `First Matching Item: Name: ${firstMatchingItem.name}, Cost: ${firstMatchingItem.cost}, upgradeId: ${firstMatchingItem.upgradeId}`
+            );
 
-        //     const upgradeId = firstMatchingItem.upgradeId;
-        //     const result = await update(
-        //       bearerQuery,
-        //       randomUserAgent,
-        //       upgradeId
-        //     );
-        //     console.log("Upgrades skill: ", result.statusText);
-        //   } else {
-        //     console.log("No matching items found.");
-        //   }
-        // } catch (e) {
-        //   console.log("terjadi kesalahan, skip proses");
-        // }
+            const upgradeId = firstMatchingItem.upgradeId;
+            const result = await update(
+              bearerQuery,
+              randomUserAgent,
+              upgradeId
+            );
+            console.log("Upgrades skill: ", result.statusText);
+          } else {
+            console.log("No matching items found.");
+          }
+        } catch (e) {
+          console.log("terjadi kesalahan pada saat upgrade");
+        }
 
         await delay(300); // Optional delay between bearer tokens
       }
